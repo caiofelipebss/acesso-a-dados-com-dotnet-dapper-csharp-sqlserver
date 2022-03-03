@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using BaltaDataAccess.Models;
 using Dapper;
 using Microsoft.Data.SqlClient;
@@ -25,7 +27,8 @@ namespace BaltaDataAccess
                 //ExecuteReadProcedure(connection);
                 //ExecuteScalar(connection);
                 //ReadView(connection);
-                OneToOne(connection);
+                //OneToOne(connection);
+                OneToMany(connection);
             }
         }
 
@@ -175,7 +178,7 @@ namespace BaltaDataAccess
             var parametro = new { StudentId = "1DD13D45-7AE1-4353-907F-1538857D47B9" };
             var affectedRows = connection.Execute(procedure, parametro, commandType: CommandType.StoredProcedure);
 
-            Console.WriteLine($"{affectedRows} linhas afetadas" );
+            Console.WriteLine($"{affectedRows} linhas afetadas");
         }
 
         static void ExecuteReadProcedure(SqlConnection connection)
@@ -192,7 +195,7 @@ namespace BaltaDataAccess
 
         static void ExecuteScalar(SqlConnection connection)
         {
-            var category = new Category();           
+            var category = new Category();
             category.Title = "Amazon AWS";
             category.Url = "amazon";
             category.Description = "Categoria destinada a serviços do AWS";
@@ -259,13 +262,60 @@ namespace BaltaDataAccess
                 Console.WriteLine($"{item.Title} - Curso: {item.Course.Title}");
             }
         }
+
+        static void OneToMany(SqlConnection connection)
+        {
+            var sql = @"
+                SELECT 
+	                [Career].[Id],
+	                [Career].[Title],
+	                [CareerItem].[CareerId],
+	                [CareerItem].[Title]
+                FROM
+	                [Career]
+                INNER JOIN
+	                [CareerItem] ON [CareerItem].[CareerId] = [Career].[Id] 
+                ORDER BY
+	                [Career].[Title]";
+
+            var careers = new List<Career>();
+            var items = connection.Query<Career, CareerItem, Career>(
+                sql,
+                (career, item) =>
+                {
+                    var car = careers.Where(x => x.Id == career.Id).FirstOrDefault();
+                    if (car == null)
+                    {
+                        car = career;
+                        car.Items.Add(item);
+                        careers.Add(car);
+                    }
+                    else
+                    {
+                        car.Items.Add(item);
+                    }
+                    
+                    return career;
+                }, splitOn: "CareerId");
+
+            foreach (var career in careers)
+            {
+                Console.WriteLine($"{career.Title}:");
+
+                foreach (var item in career.Items)
+                {
+                    Console.WriteLine($" - {item.Title}");
+
+                }
+            }
+        }
     }
 }
 
 
 
 
-// "Server=CAIO-PC\\SQLEXPRESS;Database=balta;user id=sa;password=123456;Trusted_Connection=False;MultipleActiveResultSets=true";
+
 
 //using (var connection = new SqlConnection(connectionString))
 //{
