@@ -31,7 +31,8 @@ namespace BaltaDataAccess
                 //OneToMany(connection);
                 //QueryMutiple(connection);
                 //SelectIn(connection);
-                Like(connection, "api");
+                //Like(connection, "api");
+                Transaction(connection);
             }
         }
 
@@ -297,7 +298,7 @@ namespace BaltaDataAccess
                     {
                         car.Items.Add(item);
                     }
-                    
+
                     return career;
                 }, splitOn: "CareerId");
 
@@ -313,7 +314,7 @@ namespace BaltaDataAccess
             }
         }
 
-        static void QueryMutiple (SqlConnection connection)
+        static void QueryMutiple(SqlConnection connection)
         {
             var query = "SELECT * FROM [Category]; SELECT * FROM [Course]";
 
@@ -334,17 +335,17 @@ namespace BaltaDataAccess
             }
         }
 
-        static void SelectIn (SqlConnection connection)
+        static void SelectIn(SqlConnection connection)
         {
             var query = @"SELECT * FROM [Career] WHERE [Id] IN @Id";
 
-            var items = connection.Query<Career>(query, new 
+            var items = connection.Query<Career>(query, new
             {
                 Id = new[]
-                {                    
+                {
                         "01AE8A85-B4E8-4194-A0F1-1C6190AF54CB",
                         "4327AC7E-963B-4893-9F31-9A3B28A4E72B"
-                }            
+                }
             });
 
             foreach (var item in items)
@@ -354,7 +355,7 @@ namespace BaltaDataAccess
         }
 
         static void Like(SqlConnection connection, string term)
-        {            
+        {
             var query = @"SELECT * FROM [Course] WHERE [Title] LIKE @exp";
 
             var items = connection.Query<Course>(query, new
@@ -365,6 +366,49 @@ namespace BaltaDataAccess
             foreach (var item in items)
             {
                 Console.WriteLine(item.Title);
+            }
+        }
+
+        static void Transaction(SqlConnection connection)
+        {
+            var category = new Category();
+            category.Id = Guid.NewGuid();
+            category.Title = "Minha categoria testeN";
+            category.Url = "testeN";
+            category.Description = "Categoria destinada a serviços do AWS";
+            category.Order = 8;
+            category.Summary = "AWS Cloud";
+            category.Featured = false;
+
+            var insertSql = @"INSERT INTO 
+                    [Category] 
+                VALUES(
+                    @Id, 
+                    @Title, 
+                    @Url, 
+                    @Summary, 
+                    @Order, 
+                    @Description, 
+                    @Featured)";
+
+            connection.Open();
+            using (var transaction = connection.BeginTransaction())
+            {
+                var rows = connection.Execute(insertSql, new
+                {
+                    category.Id,
+                    category.Title,
+                    category.Url,
+                    category.Summary,
+                    category.Order,
+                    category.Description,
+                    category.Featured
+                }, transaction);
+
+                //transaction.Commit(); //Aqui salva
+                transaction.Rollback(); //Aqui desfaz a transação
+
+                Console.WriteLine($"{rows} linhas inseridas");
             }
         }
     }
